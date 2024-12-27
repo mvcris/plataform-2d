@@ -3,6 +3,7 @@ package game
 import rl "vendor:raylib"
 import "core:fmt"
 import "core:math/rand"
+import "core:math/linalg"
 import "core:math"
 import core_hash "core:hash"
 import "core:encoding/json"
@@ -135,9 +136,10 @@ main :: proc() {
     editor_zoom: f32 = 1
     editor_g := Edtior{selected_tile = -1}
     world := World{}
-    dash_time:f32 = 0.3
+    dash_time:f32 = 0.2
     dash_speed := 200
     dash_current_time:f32 = 0
+    dash_sign: int = 0
     in_dash := false
     shake := Shake{2, 1.5, 0.1}
     scrollPos := 0.0
@@ -170,15 +172,18 @@ main :: proc() {
             target = {player.position.x, fixed_camera_y},
         }
         
-        if rl.IsKeyDown(.A) {
-            player.speed.x = -100
-            player_sprite_run.width = player_sprite_run.width
-        } else if rl.IsKeyDown(.D) {
-            player.speed.x = 100
-            player_sprite_run.width = player_sprite_run.width
-        } else {
-            player.speed.x = 0
+        if !in_dash {
+            if rl.IsKeyDown(.A) {
+                player.speed.x = -100
+                player_sprite_run.width = player_sprite_run.width
+            } else if rl.IsKeyDown(.D) {
+                player.speed.x = 100
+                player_sprite_run.width = player_sprite_run.width
+            } else {
+                player.speed.x = 0
+            }
         }
+        
         if editor {
             if rl.IsKeyDown(.D) {
                offset.x += 15
@@ -219,6 +224,7 @@ main :: proc() {
 
         if !editor {
             player.speed.y += gravity_force * rl.GetFrameTime()
+            player.speed.y = linalg.clamp(player.speed.y, -450, 450)
         }
 
         if player.speed.x == 0 {
@@ -232,14 +238,17 @@ main :: proc() {
         is_on_ground = false
 
 
-        if !in_dash && rl.IsKeyPressed(.LEFT_SHIFT) {
+        if !in_dash && rl.IsKeyPressed(.LEFT_SHIFT) && player.speed.x !=0 {
+            fmt.println("hereee")
             dash_current_time = 0
             in_dash = true
+            dash_sign = player.speed.x > 0 ? 1 : -1
         }
 
         if in_dash {
+            fmt.println(dash_sign)
             player.speed.y = 0
-            player.speed.x = 800
+            player.speed.x = 800 * f32(dash_sign)
             dash_current_time += rl.GetFrameTime()
             if dash_current_time >= dash_time {
                 in_dash = false
@@ -372,13 +381,16 @@ main :: proc() {
             if scrollPos > f64(1600-window_height) {
                 scrollPos = f64(1600 - window_height)
             }
-            if rl.GuiButton({0,0,60,20}, "Tiles") {
+            if rl.GuiButton({0,0,60,20}, "save") {
                 editor_g.tab = .tiles
             }
-            if rl.GuiButton({60,0,60,20}, "Tiles Collider") {
+            if rl.GuiButton({60,0,60,20}, "tiles") {
+                editor_g.tab = .tiles
+            }
+            if rl.GuiButton({120,0,90,20}, "tiles collider") {
                 editor_g.tab = .tiles_colliders
             }
-            if rl.GuiButton({120,0,60,20}, "Entities") {
+            if rl.GuiButton({210,0,60,20}, "entities") {
                 editor_g.tab = .entities
             }
 
